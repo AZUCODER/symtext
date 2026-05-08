@@ -1,0 +1,37 @@
+"use client"
+
+import { Suspense } from "react"
+import { LoginForm } from "@/components/auth/login-form"
+import { GalleryVerticalEndIcon } from "lucide-react"
+
+export default function LoginPage() {
+  return (
+    <div className="relative flex min-h-svh flex-col items-center justify-center gap-8 bg-linear-to-b from-background via-muted/40 to-background p-6 md:p-10">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -top-16 -left-16 h-56 w-56 rounded-full bg-primary/8 blur-3xl" />
+        <div className="absolute -right-20 bottom-8 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
+      </div>
+      <div className="relative z-10 flex w-full max-w-md flex-col gap-7">
+        <a
+          href="#"
+          className="flex items-center gap-3 self-center font-medium animate-in fade-in-0 slide-in-from-top-2 duration-500"
+        >
+          <div className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
+            <GalleryVerticalEndIcon className="size-4" />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-base font-semibold leading-none">Symtext</span>
+            <span className="mt-1 text-xs font-normal leading-none text-muted-foreground">
+              Agentic CMS for modern teams
+            </span>
+          </div>
+        </a>
+        <div className="animate-in fade-in-0 slide-in-from-bottom-2 duration-700 delay-150">
+          <Suspense fallback={<div className="h-[420px] w-full rounded-xl bg-card/60 ring-1 ring-foreground/8" />}>
+            <LoginForm />
+          </Suspense>
+        </div>
+      </div>
+    </div>
+  )
+}
