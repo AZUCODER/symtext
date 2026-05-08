@@ -1,0 +1,27 @@
+# Monorepo root ignore rules for client (Next.js) + server (FastAPI)
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+
+# JavaScript/TypeScript dependencies
+**/node_modules/
+
+# Python caches and virtual environments
+**/__pycache__/
+**/*.py[cod]
+.venv/
+**/.venv/
+
+# Accidental nested git backups
+**/.git-client-backup-*/
