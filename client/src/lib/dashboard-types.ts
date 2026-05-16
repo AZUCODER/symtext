@@ -208,3 +208,18 @@ export type BillingTransactionListResponse = {
   items: BillingTransactionItem[]
   total: number
 }
+
+export type BillingReconcileItem = {
+  transaction_id: string
+  provider: BillingProvider
+  previous_status: BillingTransactionStatus
+  new_status: BillingTransactionStatus
+  provider_transaction_id: string
+}
+
+export type BillingReconcileResponse = {
+  scanned: number
+  updated: number
+  skipped_unsupported_provider: number
+  items: BillingReconcileItem[]
+}

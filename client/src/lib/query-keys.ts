@@ -8,4 +8,5 @@ export const queryKeys = {
   aiLlmConfig: ["ai-llm-config"] as const,
   billingConfig: ["billing-config"] as const,
   billingTransactions: (params?: Record<string, unknown>) => ["billing-transactions", params] as const,
+  billingReconcile: ["billing-reconcile"] as const,
 }

@@ -1,9 +1,9 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
-import { getBillingTransactions } from "@/lib/billing-client"
+import { getBillingTransactions, runBillingReconciliation } from "@/lib/billing-client"
 import type { BillingProvider, BillingTransactionStatus } from "@/lib/dashboard-types"
 import { queryKeys } from "@/lib/query-keys"
 import { Button } from "@/components/ui/button"
@@ -22,10 +22,12 @@ function formatAmount(amountMinor: number, currency: string): string {
 }
 
 export function FinanceTransactions() {
+  const queryClient = useQueryClient()
   const [provider, setProvider] = useState<"all" | BillingProvider>("all")
   const [status, setStatus] = useState<"all" | BillingTransactionStatus>("all")
   const [customer, setCustomer] = useState("")
   const [submittedCustomer, setSubmittedCustomer] = useState("")
+  const [reconcileFeedback, setReconcileFeedback] = useState<string | null>(null)
 
   const queryParams = useMemo(
     () => ({
@@ -41,6 +43,33 @@ export function FinanceTransactions() {
     queryFn: () => getBillingTransactions(queryParams),
     staleTime: 15_000,
   })
+
+  const reconcileMutation = useMutation({
+    mutationFn: () => runBillingReconciliation({ older_than_minutes: 15, limit: 200 }),
+    onSuccess: async (result) => {
+      setReconcileFeedback(
+        `Reconcile completed: scanned ${result.scanned}, updated ${result.updated}, skipped ${result.skipped_unsupported_provider}.`,
+      )
+      queryClient.setQueryData(queryKeys.billingReconcile, result)
+      await queryClient.invalidateQueries({ queryKey: queryKeys.billingTransactions(queryParams) })
+    },
+    onError: (error) => {
+      setReconcileFeedback(error instanceof Error ? error.message : "Failed to run reconciliation")
+    },
+  })
+
+  const reconcileResult = queryClient.getQueryData<{
+    scanned: number
+    updated: number
+    skipped_unsupported_provider: number
+    items: {
+      transaction_id: string
+      provider: BillingProvider
+      previous_status: BillingTransactionStatus
+      new_status: BillingTransactionStatus
+      provider_transaction_id: string
+    }[]
+  }>(queryKeys.billingReconcile)
 
   return (
     <div className="px-4 lg:px-6">
@@ -95,7 +124,7 @@ export function FinanceTransactions() {
                 <Button
                   type="button"
                   onClick={() => setSubmittedCustomer(customer)}
-                  disabled={transactionsQuery.isFetching}
+                  disabled={transactionsQuery.isFetching || reconcileMutation.isPending}
                   className="w-full"
                 >
                   {transactionsQuery.isFetching ? "Filtering..." : "Apply Filters"}
@@ -103,6 +132,21 @@ export function FinanceTransactions() {
               </div>
             </div>
           </FieldGroup>
+
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setReconcileFeedback(null)
+                reconcileMutation.mutate()
+              }}
+              disabled={reconcileMutation.isPending}
+            >
+              {reconcileMutation.isPending ? "Reconciling..." : "Run Reconciliation"}
+            </Button>
+            <p className="text-sm text-muted-foreground">Checks old pending payments and syncs provider status.</p>
+          </div>
 
           <div className="rounded-md border border-border/70">
             <div className="overflow-x-auto">
@@ -147,10 +191,24 @@ export function FinanceTransactions() {
           {transactionsQuery.error instanceof Error && (
             <p className="text-sm text-destructive">{transactionsQuery.error.message}</p>
           )}
+          {reconcileFeedback && <p className="text-sm text-muted-foreground">{reconcileFeedback}</p>}
           {!transactionsQuery.isLoading && !transactionsQuery.error && (
             <p className="text-sm text-muted-foreground">
               {transactionsQuery.data?.total ?? 0} transaction(s) found.
             </p>
+          )}
+
+          {reconcileResult && reconcileResult.items.length > 0 && (
+            <div className="rounded-md border border-border/70 p-3 text-sm">
+              <p className="mb-2 font-medium">Last Reconciliation Updates</p>
+              <div className="space-y-1">
+                {reconcileResult.items.slice(0, 20).map((item) => (
+                  <p key={item.transaction_id} className="font-mono text-xs">
+                    {item.provider}:{item.provider_transaction_id} {item.previous_status} -&gt; {item.new_status}
+                  </p>
+                ))}
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>

@@ -1,6 +1,7 @@
 import type {
   BillingGatewayConfig,
   BillingGatewayConfigUpdatePayload,
+  BillingReconcileResponse,
   BillingTransactionListResponse,
 } from "@/lib/dashboard-types"
 import { withJsonHeaders } from "@/lib/http"
@@ -48,4 +49,20 @@ export async function getBillingTransactions(params?: {
 
   const input = `/api/billing/transactions${query.toString() ? `?${query.toString()}` : ""}`
   return requestJson<BillingTransactionListResponse>(input, { method: "GET" })
+}
+
+export async function runBillingReconciliation(params?: {
+  older_than_minutes?: number
+  limit?: number
+}): Promise<BillingReconcileResponse> {
+  const query = new URLSearchParams()
+  if (typeof params?.older_than_minutes === "number") {
+    query.set("older_than_minutes", String(params.older_than_minutes))
+  }
+  if (typeof params?.limit === "number") {
+    query.set("limit", String(params.limit))
+  }
+
+  const input = `/api/billing/reconcile${query.toString() ? `?${query.toString()}` : ""}`
+  return requestJson<BillingReconcileResponse>(input, { method: "POST" })
 }
