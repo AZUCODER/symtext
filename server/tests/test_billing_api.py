@@ -1,4 +1,5 @@
 import unittest
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 from fastapi import FastAPI
@@ -104,7 +105,7 @@ class BillingApiTests(unittest.TestCase):
             "PayPal-Cert-Url": "https://api-m.sandbox.paypal.com/certs/cert.pem",
             "PayPal-Transmission-Id": "tx-123",
             "PayPal-Transmission-Sig": "sig-abc",
-            "PayPal-Transmission-Time": "2026-05-16T12:00:00Z",
+            "PayPal-Transmission-Time": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         }
         body = {
             "id": "WH-TEST-1",
@@ -131,6 +132,107 @@ class BillingApiTests(unittest.TestCase):
         )
         self.assertEqual(transactions_response.status_code, 200)
         self.assertEqual(transactions_response.json()["total"], 1)
+
+    @patch("app.services.billing_service._verify_paypal_webhook", return_value=True)
+    def test_paypal_webhook_rejects_stale_transmission_time(self, _: object) -> None:
+        setup_response = self.client.put(
+            "/api/v1/billing/config",
+            headers=self._auth_header("admin@example.com"),
+            json={
+                "selected_provider": "paypal",
+                "mode": "sandbox",
+                "enabled": True,
+                "app_id": "paypal-app-id",
+                "secret": "paypal-secret",
+                "webhook_secret": "paypal-webhook-id",
+            },
+        )
+        self.assertEqual(setup_response.status_code, 200)
+
+        stale_time = (datetime.now(UTC) - timedelta(minutes=30)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        response = self.client.post(
+            "/api/v1/billing/webhooks/paypal",
+            headers={
+                "PayPal-Auth-Algo": "SHA256withRSA",
+                "PayPal-Cert-Url": "https://api-m.sandbox.paypal.com/certs/cert.pem",
+                "PayPal-Transmission-Id": "tx-stale",
+                "PayPal-Transmission-Sig": "sig-stale",
+                "PayPal-Transmission-Time": stale_time,
+            },
+            json={
+                "id": "WH-STALE",
+                "event_type": "PAYMENT.CAPTURE.COMPLETED",
+                "resource": {
+                    "id": "CAPTURE-STALE",
+                    "status": "COMPLETED",
+                    "payer": {"email_address": "payer@example.com"},
+                    "amount": {"currency_code": "USD", "value": "10.00"},
+                },
+            },
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("outside replay window", response.json()["detail"])
+
+    @patch("app.services.billing_service._paypal_status_from_capture", return_value="COMPLETED")
+    @patch("app.services.billing_service._verify_paypal_webhook", return_value=True)
+    def test_admin_can_run_reconciliation(self, _: object, __: object) -> None:
+        setup_response = self.client.put(
+            "/api/v1/billing/config",
+            headers=self._auth_header("admin@example.com"),
+            json={
+                "selected_provider": "paypal",
+                "mode": "sandbox",
+                "enabled": True,
+                "app_id": "paypal-app-id",
+                "secret": "paypal-secret",
+                "webhook_secret": "paypal-webhook-id",
+            },
+        )
+        self.assertEqual(setup_response.status_code, 200)
+
+        webhook_response = self.client.post(
+            "/api/v1/billing/webhooks/paypal",
+            headers={
+                "PayPal-Auth-Algo": "SHA256withRSA",
+                "PayPal-Cert-Url": "https://api-m.sandbox.paypal.com/certs/cert.pem",
+                "PayPal-Transmission-Id": "tx-pending",
+                "PayPal-Transmission-Sig": "sig-pending",
+                "PayPal-Transmission-Time": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            },
+            json={
+                "id": "WH-PENDING",
+                "event_type": "PAYMENT.CAPTURE.PENDING",
+                "resource": {
+                    "id": "CAPTURE-PENDING",
+                    "status": "PENDING",
+                    "payer": {"email_address": "payer@example.com"},
+                    "amount": {"currency_code": "USD", "value": "10.00"},
+                },
+            },
+        )
+        self.assertEqual(webhook_response.status_code, 200)
+
+        reconcile_response = self.client.post(
+            "/api/v1/billing/reconcile?older_than_minutes=0&limit=10",
+            headers=self._auth_header("admin@example.com"),
+        )
+        self.assertEqual(reconcile_response.status_code, 422)
+
+        reconcile_response = self.client.post(
+            "/api/v1/billing/reconcile?older_than_minutes=1&limit=10",
+            headers=self._auth_header("admin@example.com"),
+        )
+        self.assertEqual(reconcile_response.status_code, 200)
+        body = reconcile_response.json()
+        self.assertIn("scanned", body)
+        self.assertIn("updated", body)
+
+    def test_viewer_cannot_run_reconciliation(self) -> None:
+        response = self.client.post(
+            "/api/v1/billing/reconcile",
+            headers=self._auth_header("viewer@example.com"),
+        )
+        self.assertEqual(response.status_code, 403)
 
 
 if __name__ == "__main__":

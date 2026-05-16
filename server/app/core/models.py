@@ -164,3 +164,19 @@ class BillingWebhookEvent(Base):
     processed = Column(Boolean, nullable=False, default=False)
     processed_at = Column(DateTime, nullable=True)
     received_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
+
+
+class BillingAuditLog(Base):
+    __tablename__ = "billing_audit_logs"
+    __table_args__ = (
+        Index("ix_billing_audit_logs_created_at", "created_at"),
+        Index("ix_billing_audit_logs_entity", "entity_type", "entity_id"),
+    )
+
+    id = Column(String(36), primary_key=True, nullable=False, default=lambda: str(uuid4()))
+    actor_email = Column(String(255), nullable=False)
+    action = Column(String(64), nullable=False)
+    entity_type = Column(String(64), nullable=False)
+    entity_id = Column(String(128), nullable=False)
+    metadata_json = Column(Text, nullable=False, default="{}")
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))

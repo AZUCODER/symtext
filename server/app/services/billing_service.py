@@ -1,7 +1,8 @@
 import base64
 import hashlib
+import json
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
@@ -12,7 +13,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
-from app.core.models import AppSetting, BillingCustomer, BillingTransaction, BillingWebhookEvent
+from app.core.models import AppSetting, BillingAuditLog, BillingCustomer, BillingTransaction, BillingWebhookEvent
 from app.schemas.billing import (
     BillingGatewayConfigResponse,
     BillingGatewayConfigUpdateRequest,
@@ -20,6 +21,8 @@ from app.schemas.billing import (
     BillingGatewayProviderStatus,
     BillingMode,
     BillingProvider,
+    BillingReconcileItem,
+    BillingReconcileResponse,
     BillingTransactionItem,
     BillingTransactionListResponse,
     BillingTransactionQuery,
@@ -29,6 +32,7 @@ from app.schemas.billing import (
 
 SUPPORTED_PROVIDERS: tuple[BillingProvider, ...] = ("paypal", "alipay")
 SELECTED_PROVIDER_KEY = "billing.selected_provider"
+WEBHOOK_TOLERANCE_SECONDS = 300
 
 
 @dataclass(frozen=True)
@@ -44,6 +48,26 @@ class ProviderRuntimeConfig:
 class WebhookProcessResult:
     provider_event_id: str
     duplicate: bool
+
+
+def _write_audit_log(
+    db: Session,
+    *,
+    actor_email: str,
+    action: str,
+    entity_type: str,
+    entity_id: str,
+    metadata: dict[str, Any] | None = None,
+) -> None:
+    db.add(
+        BillingAuditLog(
+            actor_email=actor_email,
+            action=action,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            metadata_json=json.dumps(metadata or {}, sort_keys=True),
+        )
+    )
 
 
 def _setting_key(provider: BillingProvider, field: str) -> str:
@@ -165,6 +189,7 @@ def update_billing_gateway_config(
     db: Session,
     settings: Settings,
     payload: BillingGatewayConfigUpdateRequest,
+    actor_email: str | None = None,
 ) -> BillingGatewayConfigResponse:
     _upsert_setting(db, key=SELECTED_PROVIDER_KEY, value=payload.selected_provider, is_secret=False)
     _upsert_setting(
@@ -203,6 +228,23 @@ def update_billing_gateway_config(
             value=_encrypt_secret(settings, payload.webhook_secret.strip()),
             is_secret=True,
         )
+
+    _write_audit_log(
+        db,
+        actor_email=actor_email or "system@billing",
+        action="gateway.config.updated",
+        entity_type="billing.gateway",
+        entity_id=payload.selected_provider,
+        metadata={
+            "mode": payload.mode,
+            "enabled": payload.enabled,
+            "updated_fields": {
+                "app_id": payload.app_id is not None,
+                "secret": payload.secret is not None,
+                "webhook_secret": payload.webhook_secret is not None,
+            },
+        },
+    )
 
     db.commit()
     return get_billing_gateway_config(db, settings)
@@ -332,6 +374,30 @@ def _verify_paypal_webhook(
         return body.get("verification_status") == "SUCCESS"
 
 
+def _parse_paypal_transmission_time(value: str) -> datetime | None:
+    trimmed = value.strip()
+    if not trimmed:
+        return None
+    normalized = trimmed.replace("Z", "+00:00")
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError:
+        return None
+
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
+
+
+def _is_recent_paypal_webhook(headers: dict[str, str]) -> bool:
+    transmission_time = headers.get("paypal-transmission-time", "")
+    parsed = _parse_paypal_transmission_time(transmission_time)
+    if parsed is None:
+        return False
+    now = datetime.now(UTC)
+    return abs((now - parsed).total_seconds()) <= WEBHOOK_TOLERANCE_SECONDS
+
+
 def _normalize_alipay_public_key(raw_key: str) -> str:
     stripped = "".join(raw_key.strip().split())
     if "BEGINPUBLICKEY" in stripped or "BEGINRSAPUBLICKEY" in stripped:
@@ -374,6 +440,25 @@ def _verify_alipay_signature(runtime: ProviderRuntimeConfig, payload: dict[str, 
         return False
 
     return True
+
+
+def _parse_alipay_notify_time(value: str) -> datetime | None:
+    trimmed = value.strip()
+    if not trimmed:
+        return None
+    try:
+        parsed = datetime.strptime(trimmed, "%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        return None
+    return parsed.replace(tzinfo=UTC)
+
+
+def _is_recent_alipay_webhook(payload: dict[str, str]) -> bool:
+    parsed = _parse_alipay_notify_time(payload.get("notify_time", ""))
+    if parsed is None:
+        return False
+    now = datetime.now(UTC)
+    return abs((now - parsed).total_seconds()) <= WEBHOOK_TOLERANCE_SECONDS
 
 
 def _canonical_status(event_type: str, provider_status: str) -> str:
@@ -437,6 +522,9 @@ def process_paypal_webhook(
     if not _is_provider_configured(runtime):
         raise ValueError("PayPal gateway is not fully configured")
 
+    if not _is_recent_paypal_webhook(headers):
+        raise ValueError("PayPal webhook rejected: transmission time is outside replay window")
+
     if not _verify_paypal_webhook(runtime, headers, payload):
         raise ValueError("Invalid PayPal webhook signature")
 
@@ -495,6 +583,14 @@ def process_paypal_webhook(
 
     webhook_event.processed = True
     webhook_event.processed_at = datetime.now(UTC)
+    _write_audit_log(
+        db,
+        actor_email="webhook:paypal",
+        action="webhook.processed",
+        entity_type="billing.webhook",
+        entity_id=provider_event_id,
+        metadata={"provider": "paypal", "duplicate": False, "event_type": event_type},
+    )
     db.commit()
     return WebhookProcessResult(provider_event_id=provider_event_id, duplicate=False)
 
@@ -507,6 +603,9 @@ def process_alipay_webhook(
     runtime = _get_provider_runtime_config(db, settings, "alipay")
     if not _is_provider_configured(runtime):
         raise ValueError("Alipay gateway is not fully configured")
+
+    if not _is_recent_alipay_webhook(payload):
+        raise ValueError("Alipay webhook rejected: notify_time is outside replay window")
 
     if not _verify_alipay_signature(runtime, payload):
         raise ValueError("Invalid Alipay webhook signature")
@@ -559,5 +658,114 @@ def process_alipay_webhook(
 
     webhook_event.processed = True
     webhook_event.processed_at = datetime.now(UTC)
+    _write_audit_log(
+        db,
+        actor_email="webhook:alipay",
+        action="webhook.processed",
+        entity_type="billing.webhook",
+        entity_id=provider_event_id,
+        metadata={"provider": "alipay", "duplicate": False, "event_type": event_type},
+    )
     db.commit()
     return WebhookProcessResult(provider_event_id=provider_event_id, duplicate=False)
+
+
+def _paypal_status_from_capture(
+    runtime: ProviderRuntimeConfig,
+    provider_transaction_id: str,
+) -> str | None:
+    api_base = _get_paypal_api_base(runtime.mode)
+    with httpx.Client(timeout=15.0) as client:
+        token_response = client.post(
+            f"{api_base}/v1/oauth2/token",
+            auth=(runtime.app_id, runtime.secret),
+            data={"grant_type": "client_credentials"},
+        )
+        if token_response.status_code != 200:
+            return None
+        access_token = token_response.json().get("access_token", "")
+        if not access_token:
+            return None
+
+        capture_response = client.get(
+            f"{api_base}/v2/payments/captures/{provider_transaction_id}",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        if capture_response.status_code != 200:
+            return None
+        body = capture_response.json()
+        return str(body.get("status", "")).strip() or None
+
+
+def reconcile_pending_transactions(
+    db: Session,
+    settings: Settings,
+    *,
+    actor_email: str,
+    older_than_minutes: int = 15,
+    limit: int = 200,
+) -> BillingReconcileResponse:
+    threshold = datetime.now(UTC) - timedelta(minutes=max(1, older_than_minutes))
+    rows = db.execute(
+        select(BillingTransaction)
+        .where(BillingTransaction.status_canonical == "pending", BillingTransaction.occurred_at <= threshold)
+        .order_by(BillingTransaction.occurred_at.asc())
+        .limit(max(1, min(limit, 500)))
+    ).scalars().all()
+
+    items: list[BillingReconcileItem] = []
+    skipped_unsupported_provider = 0
+    updated = 0
+
+    paypal_runtime = _get_provider_runtime_config(db, settings, "paypal")
+
+    for txn in rows:
+        if txn.provider != "paypal":
+            skipped_unsupported_provider += 1
+            continue
+        if not _is_provider_configured(paypal_runtime):
+            skipped_unsupported_provider += 1
+            continue
+
+        provider_status = _paypal_status_from_capture(paypal_runtime, txn.provider_transaction_id)
+        if not provider_status:
+            continue
+
+        next_status = _canonical_status("PAYMENT.CAPTURE", provider_status)
+        if next_status == txn.status_canonical:
+            continue
+
+        prev_status = txn.status_canonical
+        txn.status_canonical = next_status
+        txn.status_provider_raw = provider_status
+        updated += 1
+        items.append(
+            BillingReconcileItem(
+                transaction_id=txn.id,
+                provider=txn.provider,
+                previous_status=prev_status,
+                new_status=next_status,
+                provider_transaction_id=txn.provider_transaction_id,
+            )
+        )
+
+    _write_audit_log(
+        db,
+        actor_email=actor_email,
+        action="reconcile.pending_transactions",
+        entity_type="billing.reconcile",
+        entity_id=datetime.now(UTC).isoformat(),
+        metadata={
+            "scanned": len(rows),
+            "updated": updated,
+            "skipped_unsupported_provider": skipped_unsupported_provider,
+        },
+    )
+    db.commit()
+
+    return BillingReconcileResponse(
+        scanned=len(rows),
+        updated=updated,
+        skipped_unsupported_provider=skipped_unsupported_provider,
+        items=items,
+    )

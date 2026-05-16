@@ -71,6 +71,21 @@ class BillingWebhookProcessResponse(BaseModel):
     provider_event_id: str
 
 
+class BillingReconcileItem(BaseModel):
+    transaction_id: str
+    provider: BillingProvider
+    previous_status: BillingTransactionStatus
+    new_status: BillingTransactionStatus
+    provider_transaction_id: str
+
+
+class BillingReconcileResponse(BaseModel):
+    scanned: int
+    updated: int
+    skipped_unsupported_provider: int
+    items: list[BillingReconcileItem]
+
+
 def amount_to_minor(value: str | int | float | None) -> int:
     if value is None:
         return 0

@@ -11,6 +11,7 @@ from app.schemas.billing import (
     BillingGatewayConfigResponse,
     BillingGatewayConfigUpdateRequest,
     BillingProvider,
+    BillingReconcileResponse,
     BillingTransactionListResponse,
     BillingTransactionQuery,
     BillingTransactionStatus,
@@ -21,6 +22,7 @@ from app.services.billing_service import (
     get_billing_transactions,
     process_alipay_webhook,
     process_paypal_webhook,
+    reconcile_pending_transactions,
     update_billing_gateway_config,
 )
 
@@ -43,9 +45,8 @@ def update_billing_config(
     current_user: UserProfile = Depends(require_roles({"admin"})),
     db: Session = Depends(get_db),
 ) -> BillingGatewayConfigResponse:
-    _ = current_user
     settings = get_settings()
-    return update_billing_gateway_config(db, settings, payload)
+    return update_billing_gateway_config(db, settings, payload, actor_email=current_user.email)
 
 
 @router.get("/transactions", response_model=BillingTransactionListResponse)
@@ -69,6 +70,23 @@ def list_billing_transactions(
         limit=limit,
     )
     return get_billing_transactions(db, query)
+
+
+@router.post("/reconcile", response_model=BillingReconcileResponse)
+def reconcile_billing_transactions(
+    older_than_minutes: int = Query(default=15, ge=1, le=1440),
+    limit: int = Query(default=200, ge=1, le=500),
+    current_user: UserProfile = Depends(require_roles({"admin"})),
+    db: Session = Depends(get_db),
+) -> BillingReconcileResponse:
+    settings = get_settings()
+    return reconcile_pending_transactions(
+        db,
+        settings,
+        actor_email=current_user.email,
+        older_than_minutes=older_than_minutes,
+        limit=limit,
+    )
 
 
 @router.post("/webhooks/paypal", response_model=BillingWebhookProcessResponse)
