@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
 import { getBillingTransactions, runBillingReconciliation } from "@/lib/billing-client"
 import type { BillingProvider, BillingTransactionStatus } from "@/lib/dashboard-types"
@@ -21,15 +22,71 @@ function formatAmount(amountMinor: number, currency: string): string {
   }).format(amount)
 }
 
+function parseIntegerInRange(value: string | null, fallback: number, min: number, max: number): number {
+  if (!value) {
+    return fallback
+  }
+  const parsed = Number.parseInt(value, 10)
+  if (Number.isNaN(parsed) || parsed < min || parsed > max) {
+    return fallback
+  }
+  return parsed
+}
+
 export function FinanceTransactions() {
   const queryClient = useQueryClient()
-  const [provider, setProvider] = useState<"all" | BillingProvider>("all")
-  const [status, setStatus] = useState<"all" | BillingTransactionStatus>("all")
-  const [customer, setCustomer] = useState("")
-  const [submittedCustomer, setSubmittedCustomer] = useState("")
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  const providerParam = searchParams.get("provider")
+  const statusParam = searchParams.get("status")
+  const customerParam = searchParams.get("customer") ?? ""
+  const reconcileMinutesParam = parseIntegerInRange(searchParams.get("older_than_minutes"), 15, 1, 1440)
+  const reconcileLimitParam = parseIntegerInRange(searchParams.get("limit"), 200, 1, 500)
+
+  const initialProvider: "all" | BillingProvider =
+    providerParam === "paypal" || providerParam === "alipay" ? providerParam : "all"
+  const initialStatus: "all" | BillingTransactionStatus =
+    statusParam === "pending" || statusParam === "succeeded" || statusParam === "failed" || statusParam === "refunded"
+      ? statusParam
+      : "all"
+
+  const [provider, setProvider] = useState<"all" | BillingProvider>(initialProvider)
+  const [status, setStatus] = useState<"all" | BillingTransactionStatus>(initialStatus)
+  const [customer, setCustomer] = useState(customerParam)
+  const [submittedCustomer, setSubmittedCustomer] = useState(customerParam)
   const [reconcileFeedback, setReconcileFeedback] = useState<string | null>(null)
-  const [reconcileMinutes, setReconcileMinutes] = useState("15")
-  const [reconcileLimit, setReconcileLimit] = useState("200")
+  const [reconcileMinutes, setReconcileMinutes] = useState(String(reconcileMinutesParam))
+  const [reconcileLimit, setReconcileLimit] = useState(String(reconcileLimitParam))
+
+  function updateUrlQuery(next: {
+    provider: "all" | BillingProvider
+    status: "all" | BillingTransactionStatus
+    customer: string
+    olderThanMinutes: string
+    limit: string
+  }) {
+    const params = new URLSearchParams()
+    if (next.provider !== "all") {
+      params.set("provider", next.provider)
+    }
+    if (next.status !== "all") {
+      params.set("status", next.status)
+    }
+    if (next.customer.trim()) {
+      params.set("customer", next.customer.trim())
+    }
+    if (next.olderThanMinutes.trim()) {
+      params.set("older_than_minutes", next.olderThanMinutes.trim())
+    }
+    if (next.limit.trim()) {
+      params.set("limit", next.limit.trim())
+    }
+
+    const query = params.toString()
+    router.replace(query ? `${pathname}?${query}` : pathname)
+  }
 
   const queryParams = useMemo(
     () => ({
@@ -126,7 +183,16 @@ export function FinanceTransactions() {
               <div className="flex items-end">
                 <Button
                   type="button"
-                  onClick={() => setSubmittedCustomer(customer)}
+                  onClick={() => {
+                    setSubmittedCustomer(customer)
+                    updateUrlQuery({
+                      provider,
+                      status,
+                      customer,
+                      olderThanMinutes: reconcileMinutes,
+                      limit: reconcileLimit,
+                    })
+                  }}
                   disabled={transactionsQuery.isFetching || reconcileMutation.isPending}
                   className="w-full"
                 >
@@ -176,6 +242,14 @@ export function FinanceTransactions() {
                   setReconcileFeedback("Limit must be between 1 and 500.")
                   return
                 }
+
+                updateUrlQuery({
+                  provider,
+                  status,
+                  customer: submittedCustomer,
+                  olderThanMinutes: String(parsedMinutes),
+                  limit: String(parsedLimit),
+                })
 
                 reconcileMutation.mutate({ olderThanMinutes: parsedMinutes, limit: parsedLimit })
               }}
