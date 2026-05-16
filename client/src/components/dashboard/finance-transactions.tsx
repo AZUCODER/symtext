@@ -28,6 +28,8 @@ export function FinanceTransactions() {
   const [customer, setCustomer] = useState("")
   const [submittedCustomer, setSubmittedCustomer] = useState("")
   const [reconcileFeedback, setReconcileFeedback] = useState<string | null>(null)
+  const [reconcileMinutes, setReconcileMinutes] = useState("15")
+  const [reconcileLimit, setReconcileLimit] = useState("200")
 
   const queryParams = useMemo(
     () => ({
@@ -45,7 +47,8 @@ export function FinanceTransactions() {
   })
 
   const reconcileMutation = useMutation({
-    mutationFn: () => runBillingReconciliation({ older_than_minutes: 15, limit: 200 }),
+    mutationFn: ({ olderThanMinutes, limit }: { olderThanMinutes: number; limit: number }) =>
+      runBillingReconciliation({ older_than_minutes: olderThanMinutes, limit }),
     onSuccess: async (result) => {
       setReconcileFeedback(
         `Reconcile completed: scanned ${result.scanned}, updated ${result.updated}, skipped ${result.skipped_unsupported_provider}.`,
@@ -134,12 +137,47 @@ export function FinanceTransactions() {
           </FieldGroup>
 
           <div className="flex items-center gap-2">
+            <Input
+              type="number"
+              min={1}
+              max={1440}
+              step={1}
+              value={reconcileMinutes}
+              onChange={(event) => setReconcileMinutes(event.target.value)}
+              className="w-44"
+              placeholder="Older than (min)"
+              disabled={reconcileMutation.isPending}
+            />
+            <Input
+              type="number"
+              min={1}
+              max={500}
+              step={1}
+              value={reconcileLimit}
+              onChange={(event) => setReconcileLimit(event.target.value)}
+              className="w-36"
+              placeholder="Limit"
+              disabled={reconcileMutation.isPending}
+            />
             <Button
               type="button"
               variant="outline"
               onClick={() => {
                 setReconcileFeedback(null)
-                reconcileMutation.mutate()
+                const parsedMinutes = Number.parseInt(reconcileMinutes, 10)
+                const parsedLimit = Number.parseInt(reconcileLimit, 10)
+
+                if (Number.isNaN(parsedMinutes) || parsedMinutes < 1 || parsedMinutes > 1440) {
+                  setReconcileFeedback("Older than minutes must be between 1 and 1440.")
+                  return
+                }
+
+                if (Number.isNaN(parsedLimit) || parsedLimit < 1 || parsedLimit > 500) {
+                  setReconcileFeedback("Limit must be between 1 and 500.")
+                  return
+                }
+
+                reconcileMutation.mutate({ olderThanMinutes: parsedMinutes, limit: parsedLimit })
               }}
               disabled={reconcileMutation.isPending}
             >
