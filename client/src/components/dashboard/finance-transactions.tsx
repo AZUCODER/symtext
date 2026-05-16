@@ -57,6 +57,7 @@ export function FinanceTransactions() {
   const [customer, setCustomer] = useState(customerParam)
   const [submittedCustomer, setSubmittedCustomer] = useState(customerParam)
   const [reconcileFeedback, setReconcileFeedback] = useState<string | null>(null)
+  const [shareFeedback, setShareFeedback] = useState<string | null>(null)
   const [reconcileMinutes, setReconcileMinutes] = useState(String(reconcileMinutesParam))
   const [reconcileLimit, setReconcileLimit] = useState(String(reconcileLimitParam))
 
@@ -86,6 +87,17 @@ export function FinanceTransactions() {
 
     const query = params.toString()
     router.replace(query ? `${pathname}?${query}` : pathname)
+  }
+
+  async function copyShareLink() {
+    try {
+      const query = searchParams.toString()
+      const url = `${window.location.origin}${pathname}${query ? `?${query}` : ""}`
+      await navigator.clipboard.writeText(url)
+      setShareFeedback("Share link copied.")
+    } catch {
+      setShareFeedback("Failed to copy link. Please copy URL from address bar.")
+    }
   }
 
   const queryParams = useMemo(
@@ -184,6 +196,7 @@ export function FinanceTransactions() {
                 <Button
                   type="button"
                   onClick={() => {
+                    setShareFeedback(null)
                     setSubmittedCustomer(customer)
                     updateUrlQuery({
                       provider,
@@ -229,6 +242,7 @@ export function FinanceTransactions() {
               type="button"
               variant="outline"
               onClick={() => {
+                setShareFeedback(null)
                 setReconcileFeedback(null)
                 const parsedMinutes = Number.parseInt(reconcileMinutes, 10)
                 const parsedLimit = Number.parseInt(reconcileLimit, 10)
@@ -256,6 +270,14 @@ export function FinanceTransactions() {
               disabled={reconcileMutation.isPending}
             >
               {reconcileMutation.isPending ? "Reconciling..." : "Run Reconciliation"}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={copyShareLink}
+              disabled={reconcileMutation.isPending}
+            >
+              Copy Share Link
             </Button>
             <p className="text-sm text-muted-foreground">Checks old pending payments and syncs provider status.</p>
           </div>
@@ -303,6 +325,7 @@ export function FinanceTransactions() {
           {transactionsQuery.error instanceof Error && (
             <p className="text-sm text-destructive">{transactionsQuery.error.message}</p>
           )}
+          {shareFeedback && <p className="text-sm text-muted-foreground">{shareFeedback}</p>}
           {reconcileFeedback && <p className="text-sm text-muted-foreground">{reconcileFeedback}</p>}
           {!transactionsQuery.isLoading && !transactionsQuery.error && (
             <p className="text-sm text-muted-foreground">
