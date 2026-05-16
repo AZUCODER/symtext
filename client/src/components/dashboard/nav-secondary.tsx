@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import { type LucideIcon } from "lucide-react"
 import { ChevronRightIcon } from "lucide-react"
 
@@ -15,8 +16,16 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
+import { CloudIcon, BrainCircuitIcon } from "lucide-react"
 
-const settingsMenuItems = ["Website", "Billing", "Configuration"]
+const settingsMenuItems = [
+  { label: "Website", url: "#" },
+  { label: "Billing Configuration", url: "/dashboard/billing-configuration" },
+  { label: "Finance Transactions", url: "/dashboard/finance-transactions" },
+  { label: "Configuration", url: "#" },
+  { label: "Cloud OSS Configuration", url: "/dashboard/cloud-oss-configuration", icon: CloudIcon },
+  { label: "AI LLM Configuration", url: "/dashboard/ai-llm-configuration", icon: BrainCircuitIcon },
+]
 
 export function NavSecondary({
   items,
@@ -52,9 +61,12 @@ export function NavSecondary({
                 {isSettingsOpen ? (
                   <SidebarMenuSub>
                     {settingsMenuItems.map((setting) => (
-                      <SidebarMenuSubItem key={setting}>
-                        <SidebarMenuSubButton render={<a href="#" />}>
-                          <span>{setting}</span>
+                      <SidebarMenuSubItem key={setting.label}>
+                        <SidebarMenuSubButton 
+                          render={setting.url === "#" ? <a href="#" /> : <Link href={setting.url} />}
+                        >
+                          {setting.icon && <setting.icon />}
+                          <span>{setting.label}</span>
                         </SidebarMenuSubButton>
                       </SidebarMenuSubItem>
                     ))}
@@ -63,7 +75,7 @@ export function NavSecondary({
               </SidebarMenuItem>
             ) : (
               <SidebarMenuItem key={item.title}>
-                <SidebarMenuButton render={<a href={item.url} />}>
+                <SidebarMenuButton render={item.url === "#" ? <a href="#" /> : <Link href={item.url} />}>
                   <item.icon />
                   <span>{item.title}</span>
                 </SidebarMenuButton>
