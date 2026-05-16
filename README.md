@@ -20,13 +20,6 @@ server/   FastAPI application
 docs/     Architecture and project notes
 ```
 
-## Push to GitHub
-
-```powershell
-git remote add origin <your-github-repo-url>
-git push -u origin main
-```
-
 ## Quick start
 
 1. Start backend:
