@@ -18,6 +18,8 @@ from app.core.security import (
 from app.services.email_verification import send_verification_email
 from app.services.auth_service import EmailChallengeService, RefreshTokenService, UserService
 from app.schemas.auth import (
+    AdminCreateUserRequest,
+    AdminUpdateUserRequest,
     AuthResponse,
     LoginRequest,
     LogoutRequest,
@@ -27,10 +29,10 @@ from app.schemas.auth import (
     RoleAuditListResponse,
     RegisterRequest,
     UpdateUserRoleRequest,
-    UserListResponse,
     UserProfile,
     VerifyEmailRequest,
 )
+from app.schemas.auth import UserAdminProfile, UserAdminListResponse
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -98,6 +100,17 @@ def serialize_user(user: User) -> UserProfile:
         email=user.email,
         role=user.role,
         is_verified=user.is_verified,
+    )
+
+
+def serialize_user_admin(user: User) -> UserAdminProfile:
+    return UserAdminProfile(
+        name=user.name,
+        email=user.email,
+        role=user.role,
+        is_verified=user.is_verified,
+        created_at=user.created_at.isoformat(),
+        updated_at=user.updated_at.isoformat(),
     )
 
 
@@ -226,19 +239,93 @@ def me(current_user: UserProfile = Depends(get_current_user)) -> UserProfile:
     return current_user
 
 
-@router.get("/users", response_model=UserListResponse)
-def list_users(db: Session = Depends(get_db), _admin_user: UserProfile = Depends(require_roles({"admin"}))) -> UserListResponse:
-    users = [serialize_user(user) for user in UserService.get_all_users(db)]
+@router.get("/users", response_model=UserAdminListResponse)
+def list_users(db: Session = Depends(get_db), current_user: UserProfile = Depends(get_current_user)) -> UserAdminListResponse:
+    if current_user.role in {"admin", "editor"}:
+        users = [serialize_user_admin(user) for user in UserService.get_all_users(db)]
+    else:
+        user = UserService.get_user(db, current_user.email)
+        if user is None:
+            raise HTTPException(status_code=404, detail="User not found")
+        users = [serialize_user_admin(user)]
     users.sort(key=lambda user: user.email)
-    return UserListResponse(users=users)
+    return UserAdminListResponse(users=users)
 
 
-@router.patch("/users/role", response_model=UserProfile)
+@router.post("/users", response_model=UserAdminProfile, status_code=status.HTTP_201_CREATED)
+def create_user_by_admin(
+    payload: AdminCreateUserRequest,
+    db: Session = Depends(get_db),
+    _admin_user: UserProfile = Depends(require_roles({"admin"})),
+) -> UserAdminProfile:
+    settings = get_settings()
+    if payload.send_verification and not payload.is_verified:
+        if not settings.resend_api_key or not settings.resend_from_email:
+            raise HTTPException(
+                status_code=400,
+                detail="Email provider is not configured. Disable send verification or configure email settings.",
+            )
+
+    email = payload.email.lower()
+    existing_user = UserService.get_user(db, email)
+    if existing_user is not None:
+        raise HTTPException(status_code=409, detail="User already exists")
+
+    user = UserService.create_user_by_admin(
+        db,
+        email=email,
+        name=payload.name,
+        role=payload.role,
+        is_verified=payload.is_verified,
+    )
+    if payload.send_verification and not payload.is_verified:
+        start_email_challenge(db=db, user=user, purpose=REGISTER_CHALLENGE_PURPOSE)
+    return serialize_user_admin(user)
+
+
+@router.patch("/users/{email}", response_model=UserAdminProfile)
+def update_user_by_admin(
+    email: str,
+    payload: AdminUpdateUserRequest,
+    db: Session = Depends(get_db),
+    admin_user: UserProfile = Depends(require_roles({"admin"})),
+) -> UserAdminProfile:
+    email = email.lower()
+    target_user = UserService.get_user(db, email)
+    if target_user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if payload.name is None and payload.role is None and payload.is_verified is None:
+        raise HTTPException(status_code=400, detail="No update fields provided")
+
+    if payload.role is not None and target_user.role == "admin" and payload.role != "admin":
+        admin_count = sum(1 for user in UserService.get_all_users(db) if user.role == "admin")
+        if admin_count <= 1:
+            raise HTTPException(status_code=400, detail="Cannot demote the last admin")
+
+    if email == admin_user.email and payload.role is not None and payload.role != "admin":
+        admin_count = sum(1 for user in UserService.get_all_users(db) if user.role == "admin")
+        if admin_count <= 1:
+            raise HTTPException(status_code=400, detail="Cannot demote the last admin")
+
+    updated_user = UserService.update_user(
+        db,
+        email=email,
+        name=payload.name,
+        role=payload.role,
+        is_verified=payload.is_verified,
+    )
+    if updated_user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return serialize_user_admin(updated_user)
+
+
+@router.patch("/users/role", response_model=UserAdminProfile)
 def update_user_role(
     payload: UpdateUserRoleRequest,
     db: Session = Depends(get_db),
     admin_user: UserProfile = Depends(require_roles({"admin"})),
-) -> UserProfile:
+) -> UserAdminProfile:
     email = payload.email.lower()
     target_user = UserService.get_user(db, email)
     if target_user is None:
@@ -249,15 +336,33 @@ def update_user_role(
         if admin_count <= 1:
             raise HTTPException(status_code=400, detail="Cannot demote the last admin")
 
-    UserService.update_user_role(db, email, payload.role)
-    updated_user = UserService.get_user(db, email)
+    updated_user = UserService.update_user_role(db, email, payload.role)
+    return serialize_user_admin(updated_user)
 
-    return serialize_user(updated_user)
+
+@router.delete("/users/{email}", response_model=MessageResponse, status_code=status.HTTP_200_OK)
+def delete_user(
+    email: str,
+    db: Session = Depends(get_db),
+    admin_user: UserProfile = Depends(require_roles({"admin"})),
+) -> MessageResponse:
+    email = email.lower()
+    if email == admin_user.email:
+        raise HTTPException(status_code=400, detail="Cannot delete your own account")
+    target_user = UserService.get_user(db, email)
+    if target_user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    if target_user.role == "admin":
+        admin_count = sum(1 for user in UserService.get_all_users(db) if user.role == "admin")
+        if admin_count <= 1:
+            raise HTTPException(status_code=400, detail="Cannot delete the last admin")
+    UserService.delete_user(db, email)
+    return MessageResponse(message=f"User {email} deleted")
 
 
 @router.get("/users/role-audit", response_model=RoleAuditListResponse)
 def list_role_audit(
-    _admin_user: UserProfile = Depends(require_roles({"admin"})),
+    _operator_user: UserProfile = Depends(require_roles({"admin", "editor"})),
     limit: int = Query(default=50, ge=1, le=200),
 ) -> RoleAuditListResponse:
     # TODO: Implement role audit logging in database

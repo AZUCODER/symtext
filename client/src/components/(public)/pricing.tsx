@@ -1,164 +1,67 @@
-"use client";
+import { Check } from "lucide-react"
 
-import NumberFlow from "@number-flow/react";
-import { ArrowUpRight, CircleCheck, CircleHelp } from "lucide-react";
-import { useState } from "react";
-import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import type { PricingPlan } from "@/lib/api"
+import { cn } from "@/lib/utils"
 
-const tooltipContent = {
-  styles: "Choose from a variety of styles to suit your preferences.",
-  filters: "Choose from a variety of filters to enhance your portraits.",
-  credits: "Use these credits to retouch your portraits.",
-};
+type PricingProps = {
+  plans: PricingPlan[]
+}
 
-const YEARLY_DISCOUNT = 20;
-const plans = [
-  {
-    name: "Starter",
-    price: 20,
-    description:
-      "Get 20 AI-generated portraits with 2 unique styles and filters.",
-    features: [
-      { title: "5 hours turnaround time" },
-      { title: "20 AI portraits" },
-      { title: "Choice of 2 styles", tooltip: tooltipContent.styles },
-      { title: "Choice of 2 filters", tooltip: tooltipContent.filters },
-      { title: "2 retouch credits", tooltip: tooltipContent.credits },
-    ],
-  },
-  {
-    name: "Advanced",
-    price: 40,
-    isRecommended: true,
-    description:
-      "Get 50 AI-generated portraits with 5 unique styles and filters.",
-    features: [
-      { title: "3 hours turnaround time" },
-      { title: "50 AI portraits" },
-      { title: "Choice of 5 styles", tooltip: tooltipContent.styles },
-      { title: "Choice of 5 filters", tooltip: tooltipContent.filters },
-      { title: "5 retouch credits", tooltip: tooltipContent.credits },
-    ],
-    isPopular: true,
-  },
-  {
-    name: "Premium",
-    price: 80,
-    description:
-      "Get 100 AI-generated portraits with 10 unique styles and filters.",
-    features: [
-      { title: "1-hour turnaround time" },
-      { title: "100 AI portraits" },
-      { title: "Choice of 10 styles", tooltip: tooltipContent.styles },
-      { title: "Choice of 10 filters", tooltip: tooltipContent.filters },
-      { title: "10 retouch credits", tooltip: tooltipContent.credits },
-    ],
-  },
-];
-
-const Pricing = () => {
-  const [selectedBillingPeriod, setSelectedBillingPeriod] = useState("monthly");
-
+export default function Pricing({ plans }: PricingProps) {
   return (
-    <div className="px-6 py-20">
-      <h2 className="text-center font-medium text-4xl tracking-[-0.04em] sm:text-[2.75rem]">
-        Our Plans
-      </h2>
-      <p className="mt-3 text-center text-muted-foreground text-xl -tracking-[0.01em] md:text-2xl">
-        Choose the plan that fits your needs
-      </p>
-
-      <Tabs
-        className="mx-auto mt-8 max-w-max"
-        onValueChange={setSelectedBillingPeriod}
-        value={selectedBillingPeriod}
-      >
-        <TabsList className="h-11 rounded-full border bg-background">
-          <TabsTrigger
-            className="rounded-full px-4 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-            value="monthly"
-          >
-            Monthly
-          </TabsTrigger>
-          <TabsTrigger
-            className="rounded-full px-4 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-            value="yearly"
-          >
-            Yearly (Save {YEARLY_DISCOUNT}%)
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
-      <div className="mx-auto mt-12 grid max-w-(--breakpoint-lg) grid-cols-1 items-center gap-8 sm:mt-16 lg:grid-cols-3 lg:gap-0">
-        {plans.map((plan) => (
-          <div
-            className={cn("relative rounded-lg border bg-card/50 p-6 px-8", {
-              "z-1 overflow-hidden bg-card px-10 py-14 shadow-[0px_1px_6px_0px_rgba(0,0,0,0.07)] lg:-mx-2":
-                plan.isPopular,
-            })}
-            key={plan.name}
-          >
-            {plan.isPopular && (
-              <Badge className="absolute top-2 right-2 px-2.5 py-1 uppercase">
-                Most Popular
-              </Badge>
-            )}
-            <h3 className="font-medium text-lg">{plan.name}</h3>
-            <p className="mt-4 font-semibold text-4xl">
-              <NumberFlow
-                className="font-satoshi"
-                prefix="$"
-                value={
-                  selectedBillingPeriod === "monthly"
-                    ? plan.price
-                    : plan.price * ((100 - YEARLY_DISCOUNT) / 100)
-                }
-              />
-              <span className="ml-1.5 font-normal text-muted-foreground text-sm">
-                /month
-              </span>
-            </p>
-            <p className="mt-4 text-muted-foreground text-sm">
-              {plan.description}
-            </p>
-
-            <Button
-              className="mt-6 w-full rounded-full text-base"
-              size="lg"
-              variant={plan.isPopular ? "default" : "outline"}
-            >
-              Get Started <ArrowUpRight className="h-4 w-4" />
-            </Button>
-            <Separator className="my-8" />
-            <ul className="space-y-3">
-              {plan.features.map((feature) => (
-                <li className="flex items-start gap-1.5" key={feature.title}>
-                  <CircleCheck className="mt-1 h-4 w-4 text-green-600" />
-                  {feature.title}
-                  {feature.tooltip && (
-                    <Tooltip>
-                      <TooltipTrigger className="cursor-help">
-                        <CircleHelp className="mt-1 h-4 w-4 text-gray-500" />
-                      </TooltipTrigger>
-                      <TooltipContent>{feature.tooltip}</TooltipContent>
-                    </Tooltip>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
+    <section aria-labelledby="pricing-title" className="w-full py-4 sm:py-8">
+      <div className="mx-auto max-w-3xl text-center">
+        <p className="text-sm font-semibold tracking-[0.12em] text-neutral-500 uppercase">Pricing</p>
+        <h1 id="pricing-title" className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">
+          Choose The Right Plan
+        </h1>
+        <p className="mt-4 text-base text-muted-foreground sm:text-lg">
+          Start with Free, scale with Pro, and unlock tailored controls with Enterprise.
+        </p>
       </div>
-    </div>
-  );
-};
 
-export default Pricing;
+      <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {plans.map((plan) => {
+          const isPro = plan.code === "pro"
+          return (
+            <article
+              key={plan.code}
+              className={cn(
+                "relative flex h-full flex-col rounded-2xl border bg-card p-6 shadow-sm",
+                isPro && "border-black/80 shadow-lg dark:border-white/80",
+              )}
+            >
+              {isPro && (
+                <Badge className="absolute top-4 right-4" variant="default">
+                  Most Popular
+                </Badge>
+              )}
+
+              <h2 className="text-2xl font-semibold">{plan.name}</h2>
+              <p className="mt-4 text-4xl font-semibold tracking-tight">
+                ${plan.price_monthly_usd}
+                <span className="ml-1 text-sm font-normal text-muted-foreground">/month</span>
+              </p>
+              <p className="mt-4 min-h-12 text-sm text-muted-foreground">{plan.description}</p>
+
+              <Button className="mt-6 w-full" size="lg" variant={isPro ? "default" : "outline"}>
+                {plan.cta_label}
+              </Button>
+
+              <ul className="mt-6 space-y-3 text-sm">
+                {plan.features.map((feature) => (
+                  <li key={feature} className="flex items-start gap-2">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
+                    <span>{feature}</span>
+                  </li>
+                ))}
+              </ul>
+            </article>
+          )
+        })}
+      </div>
+    </section>
+  )
+}

@@ -355,6 +355,8 @@ export function DataTable({
     () => data?.map(({ id }) => id) || [],
     [data]
   )
+  // TanStack Table returns non-memoizable functions; this usage is intentional.
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data,
     columns,

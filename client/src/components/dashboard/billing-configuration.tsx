@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useMemo, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { getBillingConfig, updateBillingConfig } from "@/lib/billing-client"
@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Toggle } from "@/components/ui/toggle"
 
 type Draft = {
   selected_provider: BillingProvider
@@ -25,7 +26,7 @@ export function BillingConfiguration({ currentUserRole }: { currentUserRole: "vi
   const canManage = currentUserRole === "admin"
   const queryClient = useQueryClient()
   const [feedback, setFeedback] = useState<string | null>(null)
-  const [draft, setDraft] = useState<Draft | null>(null)
+  const [draftOverrides, setDraftOverrides] = useState<Partial<Draft>>({})
 
   const configQuery = useQuery({
     queryKey: queryKeys.billingConfig,
@@ -33,19 +34,20 @@ export function BillingConfiguration({ currentUserRole }: { currentUserRole: "vi
     staleTime: 30_000,
   })
 
-  useEffect(() => {
+  const draft = useMemo<Draft | null>(() => {
     if (!configQuery.data) {
-      return
+      return null
     }
-    setDraft({
-      selected_provider: configQuery.data.selected_provider,
-      mode: configQuery.data.mode,
-      enabled: configQuery.data.enabled,
-      app_id: "",
-      secret: "",
-      webhook_secret: "",
-    })
-  }, [configQuery.data])
+
+    return {
+      selected_provider: draftOverrides.selected_provider ?? configQuery.data.selected_provider,
+      mode: draftOverrides.mode ?? configQuery.data.mode,
+      enabled: draftOverrides.enabled ?? configQuery.data.enabled,
+      app_id: draftOverrides.app_id ?? "",
+      secret: draftOverrides.secret ?? "",
+      webhook_secret: draftOverrides.webhook_secret ?? "",
+    }
+  }, [configQuery.data, draftOverrides])
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -64,14 +66,7 @@ export function BillingConfiguration({ currentUserRole }: { currentUserRole: "vi
     onSuccess: (next) => {
       queryClient.setQueryData(queryKeys.billingConfig, next)
       setFeedback(`Billing configuration saved for ${next.selected_provider}.`)
-      setDraft({
-        selected_provider: next.selected_provider,
-        mode: next.mode,
-        enabled: next.enabled,
-        app_id: "",
-        secret: "",
-        webhook_secret: "",
-      })
+      setDraftOverrides({})
     },
     onError: (error) => {
       setFeedback(error instanceof Error ? error.message : "Failed to update billing configuration")
@@ -99,14 +94,10 @@ export function BillingConfiguration({ currentUserRole }: { currentUserRole: "vi
                   disabled={!canManage || mutation.isPending}
                   onValueChange={(value) => {
                     setFeedback(null)
-                    setDraft((current) =>
-                      current
-                        ? {
-                            ...current,
-                            selected_provider: value as BillingProvider,
-                          }
-                        : current,
-                    )
+                    setDraftOverrides((current) => ({
+                      ...current,
+                      selected_provider: value as BillingProvider,
+                    }))
                   }}
                 >
                   <SelectTrigger id="billing-provider" className="h-10 w-full rounded-md border-input bg-input/20 px-3 text-sm data-[size=default]:h-10">
@@ -126,14 +117,10 @@ export function BillingConfiguration({ currentUserRole }: { currentUserRole: "vi
                   disabled={!canManage || mutation.isPending}
                   onValueChange={(value) => {
                     setFeedback(null)
-                    setDraft((current) =>
-                      current
-                        ? {
-                            ...current,
-                            mode: value as BillingMode,
-                          }
-                        : current,
-                    )
+                    setDraftOverrides((current) => ({
+                      ...current,
+                      mode: value as BillingMode,
+                    }))
                   }}
                 >
                   <SelectTrigger id="billing-mode" className="h-10 w-full rounded-md border-input bg-input/20 px-3 text-sm data-[size=default]:h-10">
@@ -148,26 +135,25 @@ export function BillingConfiguration({ currentUserRole }: { currentUserRole: "vi
 
               <Field>
                 <FieldLabel htmlFor="billing-enabled">Gateway Enabled</FieldLabel>
-                <select
-                  id="billing-enabled"
-                  value={draft.enabled ? "true" : "false"}
-                  disabled={!canManage || mutation.isPending}
-                  onChange={(event) => {
-                    setFeedback(null)
-                    setDraft((current) =>
-                      current
-                        ? {
-                            ...current,
-                            enabled: event.target.value === "true",
-                          }
-                        : current,
-                    )
-                  }}
-                  className="h-10 w-full rounded-md border border-input bg-input/20 px-3 text-sm"
-                >
-                  <option value="true">Enabled</option>
-                  <option value="false">Disabled</option>
-                </select>
+                <div className="flex items-center gap-3">
+                  <Toggle
+                    id="billing-enabled"
+                    pressed={!!draft.enabled}
+                    aria-pressed={!!draft.enabled}
+                    disabled={!canManage || mutation.isPending}
+                    onPressedChange={(pressed: boolean) => {
+                      setFeedback(null)
+                      setDraftOverrides((current) => ({
+                        ...current,
+                        enabled: pressed,
+                      }))
+                    }}
+                    className="data-[state=on]:bg-green-600 data-[state=off]:bg-muted transition-colors"
+                  >
+                    {draft.enabled ? "Enabled" : "Disabled"}
+                  </Toggle>
+                  <span className="text-xs text-muted-foreground">{draft.enabled ? "Enabled" : "Disabled"}</span>
+                </div>
               </Field>
 
               <Field>
@@ -179,7 +165,10 @@ export function BillingConfiguration({ currentUserRole }: { currentUserRole: "vi
                   disabled={!canManage || mutation.isPending}
                   onChange={(event) => {
                     setFeedback(null)
-                    setDraft((current) => (current ? { ...current, app_id: event.target.value } : current))
+                    setDraftOverrides((current) => ({
+                      ...current,
+                      app_id: event.target.value,
+                    }))
                   }}
                 />
                 <FieldDescription>
@@ -197,7 +186,10 @@ export function BillingConfiguration({ currentUserRole }: { currentUserRole: "vi
                   disabled={!canManage || mutation.isPending}
                   onChange={(event) => {
                     setFeedback(null)
-                    setDraft((current) => (current ? { ...current, secret: event.target.value } : current))
+                    setDraftOverrides((current) => ({
+                      ...current,
+                      secret: event.target.value,
+                    }))
                   }}
                 />
                 <FieldDescription>
@@ -215,14 +207,10 @@ export function BillingConfiguration({ currentUserRole }: { currentUserRole: "vi
                   disabled={!canManage || mutation.isPending}
                   onChange={(event) => {
                     setFeedback(null)
-                    setDraft((current) =>
-                      current
-                        ? {
-                            ...current,
-                            webhook_secret: event.target.value,
-                          }
-                        : current,
-                    )
+                    setDraftOverrides((current) => ({
+                      ...current,
+                      webhook_secret: event.target.value,
+                    }))
                   }}
                 />
                 <FieldDescription>

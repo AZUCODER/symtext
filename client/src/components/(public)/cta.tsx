@@ -2,8 +2,8 @@
 
 import { NeuroNoise } from "@paper-design/shaders-react";
 import { ArrowUpRight } from "lucide-react";
-import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
+import { useTheme } from "@/components/ui/theme-provider";
 
 const CTA = () => {
   const { resolvedTheme } = useTheme();

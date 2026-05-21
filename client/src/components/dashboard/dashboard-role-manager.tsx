@@ -9,6 +9,7 @@ import { queryKeys } from "@/lib/query-keys"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { FieldDescription } from "@/components/ui/field"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export function DashboardRoleManager({
   currentUserEmail,
@@ -100,16 +101,20 @@ export function DashboardRoleManager({
                 {user.email === currentUserEmail ? " • You" : ""}
               </p>
             </div>
-            <select
+            <Select
               value={user.role}
-              onChange={(event) => void updateRole(user.email, event.target.value as UserRole)}
+              onValueChange={(value) => void updateRole(user.email, value as UserRole)}
               disabled={updatingEmail === user.email}
-              className="h-9 rounded-md border border-input bg-input/20 px-3 text-sm outline-none"
             >
-              <option value="viewer">viewer</option>
-              <option value="editor">editor</option>
-              <option value="admin">admin</option>
-            </select>
+              <SelectTrigger className="h-9 min-w-28 rounded-md border-input bg-input/20 px-3 text-sm data-[size=default]:h-9">
+                <SelectValue placeholder="Select role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="viewer">viewer</SelectItem>
+                <SelectItem value="editor">editor</SelectItem>
+                <SelectItem value="admin">admin</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         ))}
         <div className="pt-3">

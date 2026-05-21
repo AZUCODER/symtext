@@ -23,7 +23,7 @@ export default async function SystemStatusPage() {
   }
 
   return (
-    <DashboardShell user={{ name: currentUser.name, email: currentUser.email }}>
+    <DashboardShell user={{ name: currentUser.name, email: currentUser.email, role: currentUser.role }}>
       <div className="px-4 lg:px-6">
         <Card>
           <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">

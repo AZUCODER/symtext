@@ -11,7 +11,7 @@ export default async function Page() {
   const { user: currentUser } = await requireDashboardUser("/dashboard")
 
   return (
-    <DashboardShell user={{ name: currentUser.name, email: currentUser.email }}>
+    <DashboardShell user={{ name: currentUser.name, email: currentUser.email, role: currentUser.role }}>
       <DashboardSearch />
       <SectionCards />
       <div className="px-4 lg:px-6">

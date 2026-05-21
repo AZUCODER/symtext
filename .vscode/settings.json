@@ -7,5 +7,9 @@
     "${workspaceFolder}/server/app"
   ],
   "python.analysis.typeCheckingMode": "basic",
-  "python.analysis.autoImportCompletions": true
+  "python.analysis.autoImportCompletions": true,
+  "chat.tools.terminal.autoApprove": {
+    "d:/webapp/symtext.com/server/.venv/Scripts/python.exe": true,
+    "Set-Content": true
+  }
 }

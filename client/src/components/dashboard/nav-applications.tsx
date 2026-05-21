@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
   SidebarGroup,
@@ -99,7 +100,7 @@ export function NavApplications({
               {items.map((item) => (
                 <SidebarMenuSubItem key={item.name}>
                   <SidebarMenuSubButton
-                    render={<a href={item.url} />}
+                    render={item.url === "#" ? <a href="#" /> : <Link href={item.url} />}
                     isActive={isItemActive(item)}
                     onClick={() => setSelectedItem(item.name)}
                     aria-current={isItemActive(item) ? "page" : undefined}

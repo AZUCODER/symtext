@@ -48,6 +48,55 @@ class UserService:
             db.refresh(user)
         return user
 
+    @staticmethod
+    def create_user_by_admin(
+        db: Session,
+        email: str,
+        name: str | None = None,
+        role: str = "viewer",
+        is_verified: bool = False,
+    ) -> User:
+        email_lower = email.lower()
+        inferred_name = (name or email_lower.split("@", 1)[0]).strip() or email_lower
+        user = User(
+            email=email_lower,
+            name=inferred_name,
+            role=role,
+            is_verified=is_verified,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        return user
+
+    @staticmethod
+    def update_user(
+        db: Session,
+        email: str,
+        name: str | None = None,
+        role: str | None = None,
+        is_verified: bool | None = None,
+    ) -> User | None:
+        user = db.query(User).filter(User.email == email.lower()).first()
+        if user is None:
+            return None
+
+        if name is not None:
+            user.name = name.strip() or user.name
+        if role is not None:
+            user.role = role
+        if is_verified is not None:
+            user.is_verified = is_verified
+
+        db.commit()
+        db.refresh(user)
+        return user
+
+    @staticmethod
+    def delete_user(db: Session, email: str) -> None:
+        db.query(User).filter(User.email == email.lower()).delete()
+        db.commit()
+
 
 class RefreshTokenService:
     @staticmethod

@@ -9,6 +9,7 @@ import { registerWithEmail, RegisterRequestError } from "@/lib/auth-client"
 import { normalizeEmail, validateEmail } from "@/lib/auth-email"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import Link from "next/link"
 import {
   Card,
   CardContent,
@@ -94,7 +95,7 @@ export function RegisterForm({
 
   return (
     <div className={cn("flex flex-col gap-4", className)} {...props}>
-      <Card className="rounded-xl bg-card/95 py-4 shadow-lg ring-1 ring-foreground/8">
+      <Card className="rounded-small bg-card/95 py-4 shadow-lg ring-1 ring-foreground/8">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl md:text-[1.75rem]">Create an account</CardTitle>
           <CardDescription>
@@ -130,7 +131,7 @@ export function RegisterForm({
                   {registerMutation.isPending ? "Sending verification..." : "Create account"}
                 </Button>
                 <FieldDescription className="pt-0.5 text-center">
-                  Already have an account? <a href="/login">Login</a>
+                  Already have an account? <Link href="/login">Login</Link>
                 </FieldDescription>
               </Field>
             </FieldGroup>
@@ -138,8 +139,8 @@ export function RegisterForm({
         </CardContent>
       </Card>
       <FieldDescription className="px-4 text-center text-xs leading-5">
-        By clicking continue, you agree to our <a href="#">Terms of Service</a>{" "}
-        and <a href="#">Privacy Policy</a>.
+        By clicking continue, you agree to our <Link href="#">Terms of Service</Link>{" "}
+        and <Link href="#">Privacy Policy</Link>.
       </FieldDescription>
     </div>
   )

@@ -8,6 +8,7 @@ type DashboardShellProps = {
   user: {
     name: string
     email: string
+    role: "viewer" | "editor" | "admin"
   }
   children: ReactNode
 }
@@ -28,6 +29,7 @@ export function DashboardShell({ user, children }: DashboardShellProps) {
         user={{
           name: user.name,
           email: user.email,
+          role: user.role,
         }}
       />
       <SidebarInset>

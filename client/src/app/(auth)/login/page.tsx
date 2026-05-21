@@ -3,6 +3,7 @@
 import { Suspense } from "react"
 import { LoginForm } from "@/components/auth/login-form"
 import { GalleryVerticalEndIcon } from "lucide-react"
+import Link from "next/link"
 
 export default function LoginPage() {
   return (
@@ -12,7 +13,7 @@ export default function LoginPage() {
         <div className="absolute -right-20 bottom-8 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
       </div>
       <div className="relative z-10 flex w-full max-w-md flex-col gap-7">
-        <a
+        <Link
           href="#"
           className="flex items-center gap-3 self-center font-medium animate-in fade-in-0 slide-in-from-top-2 duration-500"
         >
@@ -25,7 +26,7 @@ export default function LoginPage() {
               Agentic CMS for modern teams
             </span>
           </div>
-        </a>
+        </Link>
         <div className="animate-in fade-in-0 slide-in-from-bottom-2 duration-700 delay-150">
           <Suspense fallback={<div className="h-[420px] w-full rounded-xl bg-card/60 ring-1 ring-foreground/8" />}>
             <LoginForm />

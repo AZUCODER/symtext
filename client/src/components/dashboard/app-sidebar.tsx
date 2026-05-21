@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 
 import { NavDocuments } from "@/components/dashboard/nav-documents"
 import { NavMain } from "@/components/dashboard/nav-main"
@@ -15,7 +16,19 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { LayoutDashboardIcon, BotIcon, ServerIcon, ChartBarIcon, FolderIcon, UsersIcon, Settings2Icon, CircleHelpIcon, DatabaseIcon, FileChartColumnIcon, FileIcon, CommandIcon } from "lucide-react"
+import {
+  LayoutDashboardIcon,
+  BotIcon,
+  ServerIcon,
+  UsersIcon,
+  Settings2Icon,
+  CircleHelpIcon,
+  DatabaseIcon,
+  FileChartColumnIcon,
+  FileIcon,
+  FileTextIcon,
+  CommandIcon,
+} from "lucide-react"
 
 const data = {
   navMain: [
@@ -30,24 +43,19 @@ const data = {
       icon: BotIcon,
     },
     {
+      title: "Blog Posts",
+      url: "/dashboard/blog",
+      icon: FileTextIcon,
+    },
+    {
+      title: "Users",
+      url: "/dashboard/users",
+      icon: UsersIcon,
+    },
+    {
       title: "System Status",
       url: "/dashboard/system-status",
       icon: ServerIcon,
-    },
-    {
-      title: "Analytics",
-      url: "#",
-      icon: ChartBarIcon,
-    },
-    {
-      title: "Projects",
-      url: "#",
-      icon: FolderIcon,
-    },
-    {
-      title: "Team",
-      url: "#",
-      icon: UsersIcon,
     },
   ],
   navSecondary: [
@@ -87,14 +95,18 @@ export function AppSidebar({
   user?: {
     name: string
     email: string
+    role?: "viewer" | "editor" | "admin"
     avatar?: string
   }
 }) {
   const resolvedUser = user ?? {
     name: "Admin",
     email: "admin@symtext.com",
+    role: "admin" as const,
     avatar: "/avatars/shadcn.jpg",
   }
+
+  const navMainItems = data.navMain
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
@@ -103,7 +115,7 @@ export function AppSidebar({
           <SidebarMenuItem>
             <SidebarMenuButton
               className="data-[slot=sidebar-menu-button]:p-1.5!"
-              render={<a href="#" />}
+              render={<Link href="/dashboard" />}
             >
               <CommandIcon className="size-5!" />
               <span className="flex flex-col gap-0.5">
@@ -117,7 +129,7 @@ export function AppSidebar({
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
+        <NavMain items={navMainItems} />
         <NavDocuments items={data.documents} />
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>

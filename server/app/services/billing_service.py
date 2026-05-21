@@ -18,6 +18,8 @@ from app.schemas.billing import (
     BillingGatewayConfigResponse,
     BillingGatewayConfigUpdateRequest,
     BillingGatewayEditableFields,
+    BillingPricingPlan,
+    BillingPricingPlansResponse,
     BillingGatewayProviderStatus,
     BillingMode,
     BillingProvider,
@@ -33,6 +35,49 @@ from app.schemas.billing import (
 SUPPORTED_PROVIDERS: tuple[BillingProvider, ...] = ("paypal", "alipay")
 SELECTED_PROVIDER_KEY = "billing.selected_provider"
 WEBHOOK_TOLERANCE_SECONDS = 300
+
+
+PRICING_PLANS: tuple[BillingPricingPlan, ...] = (
+    BillingPricingPlan(
+        code="free",
+        name="Free",
+        price_monthly_usd=0,
+        description="Best for trying Symtext and building your first project.",
+        features=[
+            "1 workspace",
+            "Up to 3 users",
+            "Basic content publishing",
+            "Community support",
+        ],
+        cta_label="Start for Free",
+    ),
+    BillingPricingPlan(
+        code="pro",
+        name="Pro",
+        price_monthly_usd=29,
+        description="For growing teams that need advanced workflows and speed.",
+        features=[
+            "Unlimited workspaces",
+            "Up to 25 users",
+            "Advanced AI workflows",
+            "Priority email support",
+        ],
+        cta_label="Upgrade to Pro",
+    ),
+    BillingPricingPlan(
+        code="enterprise",
+        name="Enterprise",
+        price_monthly_usd=99,
+        description="For organizations that need governance, scale, and security.",
+        features=[
+            "Unlimited users",
+            "SSO and role governance",
+            "Dedicated onboarding",
+            "Custom SLA and support",
+        ],
+        cta_label="Contact Sales",
+    ),
+)
 
 
 @dataclass(frozen=True)
@@ -183,6 +228,10 @@ def get_billing_gateway_config(db: Session, settings: Settings) -> BillingGatewa
             has_webhook_secret=bool(selected_runtime.webhook_secret),
         ),
     )
+
+
+def get_pricing_plans() -> BillingPricingPlansResponse:
+    return BillingPricingPlansResponse(plans=list(PRICING_PLANS))
 
 
 def update_billing_gateway_config(

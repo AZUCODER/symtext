@@ -2,9 +2,9 @@
 
 import { useSyncExternalStore } from "react"
 import { MonitorIcon, MoonIcon, SunIcon } from "lucide-react"
-import { useTheme } from "next-themes"
 
 import { cn } from "@/lib/utils"
+import { useTheme } from "@/components/ui/theme-provider"
 
 const subscribe = () => () => {}
 

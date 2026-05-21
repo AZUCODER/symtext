@@ -52,8 +52,31 @@ class UpdateUserRoleRequest(BaseModel):
     role: UserRole
 
 
+class AdminCreateUserRequest(BaseModel):
+    email: EmailStr
+    name: str | None = None
+    role: UserRole = "viewer"
+    is_verified: bool = False
+    send_verification: bool = True
+
+
+class AdminUpdateUserRequest(BaseModel):
+    name: str | None = None
+    role: UserRole | None = None
+    is_verified: bool | None = None
+
+
 class UserListResponse(BaseModel):
     users: list[UserProfile]
+
+
+class UserAdminProfile(UserProfile):
+    created_at: str
+    updated_at: str
+
+
+class UserAdminListResponse(BaseModel):
+    users: list[UserAdminProfile]
 
 
 class RoleAuditEvent(BaseModel):

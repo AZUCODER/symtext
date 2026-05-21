@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import React from "react";
 import {
   Carousel,
@@ -61,18 +62,33 @@ const Testimonials2 = () => {
   const [count, setCount] = React.useState(0);
   const [current, setCurrent] = React.useState(0);
 
+  const syncStateFromApi = React.useCallback((nextApi: CarouselApi) => {
+    if (!nextApi) {
+      return;
+    }
+
+    setCount(nextApi.scrollSnapList().length);
+    setCurrent(nextApi.selectedScrollSnap() + 1);
+  }, []);
+
   React.useEffect(() => {
     if (!api) {
       return;
     }
 
-    setCount(api.scrollSnapList().length);
-    setCurrent(api.selectedScrollSnap() + 1);
+    const onSelect = () => {
+      syncStateFromApi(api);
+    };
 
-    api.on("select", () => {
-      setCurrent(api.selectedScrollSnap() + 1);
-    });
-  }, [api]);
+    queueMicrotask(onSelect);
+    api.on("reInit", onSelect);
+    api.on("select", onSelect);
+
+    return () => {
+      api.off("reInit", onSelect);
+      api.off("select", onSelect);
+    };
+  }, [api, syncStateFromApi]);
 
   return (
     <div className="mx-auto max-w-7xl px-6 py-12 sm:py-20">
@@ -104,10 +120,13 @@ const Testimonials2 = () => {
                       {testimonial}
                     </p>
                     <div className="mt-6 flex items-center gap-2 md:mt-0">
-                      <img
+                      <Image
                         alt=""
                         className="aspect-square h-12 rounded-full md:hidden"
                         src={avatar}
+                        width={48}
+                        height={48}
+                        unoptimized
                       />
                       <div className="flex flex-col">
                         <p className="font-medium text-lg">{name}</p>
@@ -115,10 +134,13 @@ const Testimonials2 = () => {
                       </div>
                     </div>
                   </div>
-                  <img
+                  <Image
                     alt=""
                     className="hidden aspect-square max-w-60 rounded-lg md:block"
                     src={avatar}
+                    width={240}
+                    height={240}
+                    unoptimized
                   />
                 </div>
               </CarouselItem>

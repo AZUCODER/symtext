@@ -88,7 +88,7 @@ describe("VerifyPage registration guidance", () => {
       await screen.findByText("Check newuser@example.com for your verification link to complete registration.")
     ).not.toBeNull()
     expect(screen.getByRole("button", { name: "Resend verification email" })).not.toBeNull()
-    expect(screen.getByRole("button", { name: "Use another email" })).not.toBeNull()
+    expect(screen.getByRole("link", { name: "Use another email" })).not.toBeNull()
     expect(signInMock).not.toHaveBeenCalled()
   })
 

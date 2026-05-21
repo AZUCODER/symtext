@@ -15,7 +15,7 @@ In this setup, Next.js (frontend) and FastAPI (backend) interact primarily throu
 - WebSockets: For real-time chat, notifications, live AI streaming via FastAPI.
 
 ## Authentication & Authorization (most powerful approach)
-Use token-based auth with JWT + refresh tokens, ideally with an identity provider (Auth0, Clerk, Cognito, Keycloak, etc.):
+Use token-based auth with JWT + refresh tokens, ideally with an identity provider (NextAuth):
 
 1. Authentication = who the user is
    - Login in Next.js UI

@@ -102,6 +102,7 @@ const TestimonialList = () =>
         </div>
         <Button
           render={<Link href="#" target="_blank" />}
+          nativeButton={false}
           size="icon"
           variant="ghost"
         >

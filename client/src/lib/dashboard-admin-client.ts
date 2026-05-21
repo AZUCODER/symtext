@@ -1,4 +1,10 @@
-import type { DashboardManagedUser, DashboardRoleAuditEvent, UserRole } from "@/lib/dashboard-types"
+import type {
+  AdminCreateUserPayload,
+  AdminUpdateUserPayload,
+  DashboardManagedUser,
+  DashboardRoleAuditEvent,
+  UserRole,
+} from "@/lib/dashboard-types"
 
 type ErrorPayload = {
   message?: string
@@ -45,5 +51,34 @@ export async function updateUserRole(email: string, role: UserRole): Promise<Das
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ email, role }),
+  })
+}
+
+export async function createAdminUser(payload: AdminCreateUserPayload): Promise<DashboardManagedUser> {
+  return requestJson<DashboardManagedUser>("/api/admin/users", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function updateAdminUser(
+  email: string,
+  payload: AdminUpdateUserPayload
+): Promise<DashboardManagedUser> {
+  return requestJson<DashboardManagedUser>(`/api/admin/users/${encodeURIComponent(email)}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteUser(email: string): Promise<void> {
+  await requestJson<{ message: string }>(`/api/admin/users/${encodeURIComponent(email)}`, {
+    method: "DELETE",
   })
 }

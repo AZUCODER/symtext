@@ -4,7 +4,7 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 export function FooterStatusBar() {
   return (
-    <div className="flex flex-col-reverse items-center justify-between gap-3 px-6 pt-3 pb-2 sm:flex-row">
+    <div className="flex flex-col-reverse max-w-screen-2xl mx-auto items-center justify-between gap-3 px-6 pt-3 pb-2 sm:flex-row">
       {/* Status indicator */}
       <div className="flex items-center gap-2">
         <span className="relative flex h-2 w-2">
@@ -15,7 +15,6 @@ export function FooterStatusBar() {
           All systems normal.
         </span>
       </div>
-
       {/* Three-way theme switcher */}
       <ThemeToggle />
     </div>

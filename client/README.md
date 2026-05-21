@@ -23,6 +23,14 @@ Runs at http://localhost:3000.
 
 - `AUTH_SECRET`: required by NextAuth.
 - `NEXT_PUBLIC_API_URL`: FastAPI base URL (default: `http://localhost:8000/api/v1`).
+- `DEEPSEEK_API_KEY`: API key for DeepSeek provider.
+- `DEEPSEEK_BASE_URL`: OpenAI-compatible DeepSeek endpoint (default: `https://api.deepseek.com/v1`).
+- `OPENAI_API_KEY`: API key for OpenAI provider.
+- `OPENAI_BASE_URL`: optional OpenAI-compatible base URL override (default: `https://api.openai.com/v1`).
+- `GROQ_API_KEY`: API key for Groq provider.
+- `GROQ_BASE_URL`: optional Groq-compatible base URL override (default: `https://api.groq.com/openai/v1`).
+- `OPENAI_COMPATIBLE_API_KEY`: API key for custom OpenAI-compatible provider.
+- `OPENAI_COMPATIBLE_BASE_URL`: base URL for custom OpenAI-compatible provider.
 
 ## Scripts
 
@@ -45,6 +53,7 @@ Public:
 Protected:
 - `/dashboard`
 - `/dashboard/agent-tools`
+- `/dashboard/ai-llm-configuration`
 - `/dashboard/system-status`
 
 ## Architecture summary

@@ -13,16 +13,41 @@ export type AgentTaskCreatePayload = {
   locale?: string
 }
 
+export type AgentTaskResult = {
+  title: string
+  markdown: string
+  summary: string
+  keywords: string[]
+  category: string
+  seo_title: string
+  seo_description: string
+}
+
 export type AgentTaskResponse = {
   task_id: string
   status: "queued" | "running" | "completed" | "failed"
-  action: string
+  action: AgentTaskCreatePayload["action"]
   created_at: string
+  result?: AgentTaskResult
+  error?: string
 }
 
 export type UserProfile = {
   name: string
   email: string
+}
+
+export type PricingPlan = {
+  code: "free" | "pro" | "enterprise"
+  name: string
+  price_monthly_usd: number
+  description: string
+  features: string[]
+  cta_label: string
+}
+
+export type PricingPlansResponse = {
+  plans: PricingPlan[]
 }
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -64,4 +89,8 @@ export function getAgentTask(taskId: string, token: string): Promise<AgentTaskRe
 
 export function getMe(token: string): Promise<UserProfile> {
   return apiAuthFetch<UserProfile>("/auth/me", token, { method: "GET" })
+}
+
+export function getPricingPlans(): Promise<PricingPlansResponse> {
+  return apiFetch<PricingPlansResponse>("/billing/plans", { method: "GET" })
 }

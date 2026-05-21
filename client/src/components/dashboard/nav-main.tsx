@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { usePathname } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
@@ -22,18 +23,18 @@ import { BotIcon, CirclePlusIcon, FileTextIcon, MailIcon, WrenchIcon } from "luc
 
 const createItems: { label: string; url: string; icon: LucideIcon }[] = [
   {
-    label: "Content",
-    url: "#",
+    label: "Blog Post",
+    url: "/dashboard/blog/new",
     icon: FileTextIcon,
   },
   {
-    label: "Agent",
-    url: "#",
+    label: "Agent Task",
+    url: "/dashboard/agent-tools",
     icon: BotIcon,
   },
   {
     label: "Skills",
-    url: "#",
+    url: "/dashboard/ai-llm-configuration",
     icon: WrenchIcon,
   },
 ]
@@ -74,7 +75,7 @@ export function NavMain({
                 align={isMobile ? "end" : "start"}
               >
                 {createItems.map((item) => (
-                  <DropdownMenuItem key={item.label} render={<a href={item.url} />}>
+                  <DropdownMenuItem key={item.label} render={<Link href={item.url} />}>
                     <item.icon />
                     <span>{item.label}</span>
                   </DropdownMenuItem>
@@ -98,7 +99,7 @@ export function NavMain({
               <SidebarMenuButton
                 tooltip={item.title}
                 isActive={item.url !== "#" && (pathname === item.url || pathname.startsWith(`${item.url}/`))}
-                render={<a href={item.url} />}
+                render={item.url === "#" ? <a href="#" /> : <Link href={item.url} />}
               >
                 <item.icon />
                 <span>{item.title}</span>

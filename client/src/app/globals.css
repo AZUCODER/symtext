@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "@blocknote/shadcn/style.css";
+@import "@blocknote/xl-ai/style.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -239,4 +241,9 @@
   [data-sonner-toast][data-type="error"] [data-icon] svg {
     @apply text-red-600 dark:text-red-400;
   }
+
+}
+
+.blog-body-editor .bn-editor {
+  min-height: 600px;
 }

@@ -69,6 +69,7 @@ const Footer = () => {
   return (
     <footer className="border-t bg-background px-6 pb-2 pt-2">
       <div className="mx-auto w-full max-w-screen-2xl divide-y">
+        <FooterStatusBar />
         <div className="flex flex-col items-center justify-between gap-4 px-2 pt-3 pb-5 sm:flex-row">
           <Link className="flex items-center gap-2" href="/">
             <svg
@@ -81,7 +82,6 @@ const Footer = () => {
             </svg>
             <span className="font-medium text-xl">Symtext</span>
           </Link>
-
           <ul className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 font-medium text-sm">
             {links.map(({ title, href }) => (
               <li key={title}>
@@ -90,13 +90,22 @@ const Footer = () => {
             ))}
           </ul>
         </div>
-        <div>
-          <FooterStatusBar />
-          <div className="flex flex-col-reverse items-center justify-between gap-4 px-2 pt-4 pb-2 sm:flex-row">
-            <p className="font-medium text-muted-foreground text-sm text-center sm:flex-1">
-              Copyright &copy; {new Date().getFullYear()} Symtext. All rights
-              reserved.
-            </p>
+        <div className="flex flex-col-reverse items-center justify-between gap-4 px-2 pt-4 pb-2 sm:flex-row">
+          <p className="font-medium text-muted-foreground text-sm text-center sm:flex-1">
+            Copyright &copy; {new Date().getFullYear()} Symtext. All rights
+            reserved.
+          </p>
+          <div className="flex items-center gap-4">
+            {socialLinks.map(({ label, href, icon }) => (
+              <Link
+                key={label}
+                href={href}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+                aria-label={label}
+              >
+                {icon}
+              </Link>
+            ))}
           </div>
         </div>
       </div>

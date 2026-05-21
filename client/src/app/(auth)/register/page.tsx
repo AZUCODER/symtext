@@ -2,6 +2,7 @@
 
 import { RegisterForm } from "@/components/auth/register-form"
 import { GalleryVerticalEndIcon } from "lucide-react"
+import Link from "next/link"
 
 export default function RegisterPage() {
   return (
@@ -11,7 +12,7 @@ export default function RegisterPage() {
         <div className="absolute -right-20 bottom-8 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
       </div>
       <div className="relative z-10 flex w-full max-w-md flex-col gap-5">
-        <a
+        <Link
           href="#"
           className="flex items-center gap-3 self-center font-medium animate-in fade-in-0 slide-in-from-top-2 duration-500"
         >
@@ -24,7 +25,7 @@ export default function RegisterPage() {
               Agentic CMS for modern teams
             </span>
           </div>
-        </a>
+        </Link>
         <div className="animate-in fade-in-0 slide-in-from-bottom-2 duration-700 delay-150">
           <RegisterForm />
         </div>

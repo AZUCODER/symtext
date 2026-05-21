@@ -24,6 +24,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import Link from "next/link"
 
 type LoginFieldKey = "email"
 type LoginFieldErrors = Partial<Record<LoginFieldKey, string>>
@@ -148,7 +149,7 @@ export function LoginForm({
   async function onResendVerification() {
     if (!normalizedEmail) {
       setTouched((prev) => ({ ...prev, email: true }))
-      setFieldErrors((prev) => ({ ...prev, email: "Please enter your email address" }))
+      setFieldErrors((prev) => ({ ...prev, email: "Please use your email to login" }))
       return
     }
 
@@ -178,11 +179,11 @@ export function LoginForm({
 
   return (
     <div className={cn("flex flex-col gap-7", className)} {...props}>
-      <Card className="rounded-xl bg-card/95 py-6 shadow-lg ring-1 ring-foreground/8">
+      <Card className="rounded-small bg-card/95 py-6 shadow-lg ring-1 ring-foreground/8">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl md:text-[1.75rem]">Welcome back</CardTitle>
           <CardDescription className="text-base">
-            Sign in with your email only
+            Sign in with your email
           </CardDescription>
         </CardHeader>
         <CardContent className="px-6 md:px-7">
@@ -193,7 +194,7 @@ export function LoginForm({
                 <Input
                   id="email"
                   type="email"
-                  placeholder="m@example.com"
+                  placeholder="your@email.com"
                   value={email}
                   onChange={(event) => onEmailChange(event.target.value)}
                   onBlur={() => {
@@ -229,7 +230,7 @@ export function LoginForm({
                   {isSubmitting ? "Sending link..." : "Send login link"}
                 </Button>
                 <FieldDescription className="pt-1 text-center">
-                  Don&apos;t have an account? <a href="/register">Sign up</a>
+                  Don&apos;t have an account? <Link href="/register">Sign up</Link>
                 </FieldDescription>
               </Field>
             </FieldGroup>
@@ -237,8 +238,8 @@ export function LoginForm({
         </CardContent>
       </Card>
       <FieldDescription className="px-4 text-center">
-        By clicking continue, you agree to our <a href="#">Terms of Service</a>{" "}
-        and <a href="#">Privacy Policy</a>.
+        By clicking continue, you agree to our <Link href="#">Terms of Service</Link>{" "}
+        and <Link href="#">Privacy Policy</Link>.
       </FieldDescription>
     </div>
   )

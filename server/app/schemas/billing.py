@@ -44,6 +44,19 @@ class BillingGatewayConfigUpdateRequest(BaseModel):
     webhook_secret: str | None = Field(default=None, max_length=4096)
 
 
+class BillingPricingPlan(BaseModel):
+    code: Literal["free", "pro", "enterprise"]
+    name: str
+    price_monthly_usd: int
+    description: str
+    features: list[str]
+    cta_label: str
+
+
+class BillingPricingPlansResponse(BaseModel):
+    plans: list[BillingPricingPlan]
+
+
 class BillingTransactionItem(BaseModel):
     id: str
     customer_id: str | None

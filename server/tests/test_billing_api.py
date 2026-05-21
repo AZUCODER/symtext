@@ -234,6 +234,15 @@ class BillingApiTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 403)
 
+    def test_public_can_get_pricing_plans(self) -> None:
+        response = self.client.get("/api/v1/billing/plans")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertIn("plans", payload)
+        self.assertEqual(len(payload["plans"]), 3)
+        self.assertEqual([plan["code"] for plan in payload["plans"]], ["free", "pro", "enterprise"])
+
 
 if __name__ == "__main__":
     unittest.main()

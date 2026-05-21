@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 type TaskAction = "generate" | "summarize" | "rewrite" | "categorize"
 
@@ -49,7 +50,9 @@ export function DashboardAgentTask() {
     : null
 
   const status = currentTask?.status ?? null
+  const result = currentTask?.result ?? null
   const error = validationError
+    ?? currentTask?.error
     ?? (createTaskMutation.error instanceof Error ? createTaskMutation.error.message : null)
     ?? (taskStatusQuery.error instanceof Error ? taskStatusQuery.error.message : null)
 
@@ -83,17 +86,20 @@ export function DashboardAgentTask() {
           <FieldGroup>
             <Field>
               <FieldLabel htmlFor="task-action">Action</FieldLabel>
-              <select
-                id="task-action"
-                value={action}
-                onChange={(event) => setAction(event.target.value as TaskAction)}
-                className="h-10 w-full rounded-md border border-input bg-input/20 px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
-              >
-                <option value="generate">Generate</option>
-                <option value="summarize">Summarize</option>
-                <option value="rewrite">Rewrite</option>
-                <option value="categorize">Categorize</option>
-              </select>
+              <Select value={action} onValueChange={(value) => setAction(value as TaskAction)}>
+                <SelectTrigger
+                  id="task-action"
+                  className="h-10 w-full rounded-md border-input bg-input/20 px-3 text-sm data-[size=default]:h-10"
+                >
+                  <SelectValue placeholder="Select action" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="generate">Generate</SelectItem>
+                  <SelectItem value="summarize">Summarize</SelectItem>
+                  <SelectItem value="rewrite">Rewrite</SelectItem>
+                  <SelectItem value="categorize">Categorize</SelectItem>
+                </SelectContent>
+              </Select>
             </Field>
             <Field>
               <FieldLabel htmlFor="task-content">Content</FieldLabel>
@@ -133,6 +139,24 @@ export function DashboardAgentTask() {
               <FieldDescription>
                 Current status: <Badge variant={status === "completed" ? "default" : "secondary"}>{status}</Badge>
               </FieldDescription>
+            ) : null}
+            {result ? (
+              <div className="space-y-2 rounded-md border border-border/70 bg-background/60 p-3 text-sm">
+                <p><span className="font-medium">Title:</span> {result.title}</p>
+                <p><span className="font-medium">Category:</span> {result.category}</p>
+                <p><span className="font-medium">Summary:</span> {result.summary}</p>
+                {result.keywords.length > 0 ? (
+                  <div className="flex flex-wrap gap-1">
+                    {result.keywords.map((keyword) => (
+                      <Badge key={keyword} variant="secondary">{keyword}</Badge>
+                    ))}
+                  </div>
+                ) : null}
+                <details className="rounded-sm border border-border/60 p-2">
+                  <summary className="cursor-pointer text-xs font-medium">Generated Markdown</summary>
+                  <pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap text-xs">{result.markdown}</pre>
+                </details>
+              </div>
             ) : null}
             {error ? <FieldDescription className="text-destructive">{error}</FieldDescription> : null}
           </FieldGroup>

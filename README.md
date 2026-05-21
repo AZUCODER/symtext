@@ -20,17 +20,30 @@ server/   FastAPI application
 docs/     Architecture and project notes
 ```
 
+Python environment policy:
+- Use only `server/.venv` for backend Python work.
+- Do not create a repo-root `.venv`.
+
 ## Quick start
 
 1. Start backend:
 
 ```powershell
 cd server
+# Use server/.venv only
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 copy .env.example .env
 python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Optional local queue worker (for PR2 async task work):
+
+```powershell
+cd server
+.\.venv\Scripts\Activate.ps1
+celery -A app.worker.celery_app worker --loglevel=info
 ```
 
 2. Start frontend (new terminal):
@@ -91,6 +104,7 @@ Protected endpoints:
 - Security headers are applied by backend middleware.
 - Users and refresh-token state are persisted in PostgreSQL.
 - Role-audit events and agent tasks are still in-memory (MVP).
+- Redis + Celery local infrastructure is scaffolded and can run locally, but `/api/v1/agent/tasks` is not yet queued through Celery.
 
 ## Related docs
 

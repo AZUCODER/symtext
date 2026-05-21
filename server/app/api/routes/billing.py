@@ -10,6 +10,7 @@ from app.schemas.auth import UserProfile
 from app.schemas.billing import (
     BillingGatewayConfigResponse,
     BillingGatewayConfigUpdateRequest,
+    BillingPricingPlansResponse,
     BillingProvider,
     BillingReconcileResponse,
     BillingTransactionListResponse,
@@ -19,6 +20,7 @@ from app.schemas.billing import (
 )
 from app.services.billing_service import (
     get_billing_gateway_config,
+    get_pricing_plans,
     get_billing_transactions,
     process_alipay_webhook,
     process_paypal_webhook,
@@ -27,6 +29,11 @@ from app.services.billing_service import (
 )
 
 router = APIRouter(prefix="/billing", tags=["billing"])
+
+
+@router.get("/plans", response_model=BillingPricingPlansResponse)
+def list_pricing_plans() -> BillingPricingPlansResponse:
+    return get_pricing_plans()
 
 
 @router.get("/config", response_model=BillingGatewayConfigResponse)
